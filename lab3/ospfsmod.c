@@ -555,12 +555,13 @@ allocate_block(void)
 	//SQ allocate
 	void* bitmap = &ospfs_data[OSPFS_FREEMAP_BLK];
 	
-	unsigned size_of_bitmap_bits = (ospfs_super_t->os_nblocks);
+	unsigned size_of_bitmap_bits = (ospfs_super->os_nblocks);
 	//unsigned nblocks_in_bitmap = ospfs_size2nblocks(ospfs_super_t->os_nblocks/8);
 	
 	//offset to ignore superblock and boot sector block
 	//OSPFS_FREEMAP_BLK= 2 where the bitmap begins
-	for(uint32_t i = 0; i < size_of_bitmap_bits; i++)
+	uint32_t i;
+	for(i = 0; i < size_of_bitmap_bits; i++)
 	{
 		if(bitvector_test(bitmap, i) == 1) {
 			bitvector_clear(bitmap, i);
@@ -578,7 +579,7 @@ allocate_block(void)
 //
 //   Inputs:  blockno -- the block number to be freed
 //   Returns: none
-//
+// //
 //   This function should mark the named block as free in the free-block
 //   bitmap.  (You might want to program defensively and make sure the block
 //   number isn't obviously bogus: the boot sector, superblock, free-block
@@ -589,15 +590,16 @@ free_block(uint32_t blockno)
 {
   
   	unsigned* bitmap = &ospfs_data[OSPFS_FREEMAP_BLK];
-	unsigned size_of_bitmap_bits = (ospfs_super_t->os_nblocks);
-	unsigned nblocks_in_bitmap = ospfs_size2nblocks(ospfs_super_t->os_nblocks/8);
+	//unsigned size_of_bitmap_bits = (ospfs_super->os_nblocks);
+	unsigned nblocks_in_bitmap = ospfs_size2nblocks((ospfs_super->os_nblocks)/8);
 	
 	/* EXERCISE: Your code here */
 	
-	if(blockno <= OSPFS_FREEMAP_BLK + nblocks_in_bitmap || blockno >= ospfs_super_t->os_nblocks) {
+	if((blockno <= OSPFS_FREEMAP_BLK + nblocks_in_bitmap) || (blockno >= ospfs_super->os_nblocks)) {
 		//do nothing
+		return;
 	} else {
-		bitvector_clear(blockno);
+		bitvector_set(bitmap, blockno);
 	}
 }
 
@@ -878,7 +880,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 	if(*f_pos > oi->oi_size) { //check to make sure f_pos is not beyond end of file
 		 count = 0;
 	} else if (count >= oi->oi_size - *f_pos) { // else set count to size of remaining file
-		count = oi->oi_size - *f_pos
+		count = oi->oi_size - *f_pos;
 	}
 	
 	//end_SQ_additions
@@ -903,21 +905,20 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
 	
-	/*	Saqibs version
 		if ((count-amount) > OSPFS_BLKSIZE) {
 		  n = OSPFS_BLKSIZE;
 		} else {
 		  n = (count-amount);
 		}
 	
-	*/Saqibs version
+	 //Saqibs version
 	
-	// other version
+	/*// other version
 	n = OSPFS_BLKSIZE - *f_pos % OSPFS_BLKSIZE; // uhh what?
 		
 		// If in the last block, make sure not to read past
 	n = (n > count - amount) ? (count - amount) : n;
-	// other version
+	*/// other version
 		
 		if(copy_to_user((void*)buffer, (void*)data, n) != 0) {
 		  retval = -EFAULT;
