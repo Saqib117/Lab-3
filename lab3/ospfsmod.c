@@ -529,7 +529,7 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 /*****************************************************************************
  * FREE-BLOCK BITMAP OPERATIONS
  *
- * EXERCISE: Implement these functions.
+ * EXERCISE: Implement these functions. SQ
  */
 
 // allocate_block()
@@ -552,6 +552,22 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 static uint32_t
 allocate_block(void)
 {
+	//SQ allocate
+	void* bitmap = &ospfs_data[OSPFS_FREEMAP_BLK];
+	
+	unsigned size_of_bitmap_bits = (ospfs_super_t->os_nblocks);
+	//unsigned nblocks_in_bitmap = ospfs_size2nblocks(ospfs_super_t->os_nblocks/8);
+	
+	//offset to ignore superblock and boot sector block
+	//OSPFS_FREEMAP_BLK= 2 where the bitmap begins
+	for(uint32_t i = 0; i < size_of_bitmap_bits; i++)
+	{
+		if(bitvector_test(bitmap, i) == 1) {
+			bitvector_clear(bitmap, i);
+			return i;
+		}
+	}
+	//end SQ allocate
 	/* EXERCISE: Your code here */
 	return 0;
 }
@@ -571,7 +587,18 @@ allocate_block(void)
 static void
 free_block(uint32_t blockno)
 {
+  
+  	unsigned* bitmap = &ospfs_data[OSPFS_FREEMAP_BLK];
+	unsigned size_of_bitmap_bits = (ospfs_super_t->os_nblocks);
+	unsigned nblocks_in_bitmap = ospfs_size2nblocks(ospfs_super_t->os_nblocks/8);
+	
 	/* EXERCISE: Your code here */
+	
+	if(blockno <= OSPFS_FREEMAP_BLK + nblocks_in_bitmap || blockno >= ospfs_super_t->os_nblocks) {
+		//do nothing
+	} else {
+		bitvector_clear(blockno);
+	}
 }
 
 
@@ -845,10 +872,14 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 	// Make sure we don't read past the end of the file!
 	// Change 'count' so we never read past the end of the file.
 	/* EXERCISE: Your code here */
-
+	
 	//SQ_additions
-	count = oi->oi_size;
-
+	
+	if(*f_pos > oi->oi_size) { //check to make sure f_pos is not beyond end of file
+		 count = 0;
+	} else if (count >= oi->oi_size - *f_pos) { // else set count to size of remaining file
+		count = oi->oi_size - *f_pos
+	}
 	
 	//end_SQ_additions
 	// Copy the data to user block by block
@@ -856,6 +887,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
 		uint32_t n = 0;
 		char *data;
+
 
 		// ospfs_inode_blockno returns 0 on error
 		if (blockno == 0) {
@@ -870,15 +902,28 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
-		
+	
+	/*	Saqibs version
 		if ((count-amount) > OSPFS_BLKSIZE) {
 		  n = OSPFS_BLKSIZE;
 		} else {
 		  n = (count-amount);
 		}
-		if(copy_to_user(buffer, data, n) != 0)
-		  retval = -EFAULT;
+	
+	*/Saqibs version
+	
+	// other version
+	n = OSPFS_BLKSIZE - *f_pos % OSPFS_BLKSIZE; // uhh what?
 		
+		// If in the last block, make sure not to read past
+	n = (n > count - amount) ? (count - amount) : n;
+	// other version
+		
+		if(copy_to_user((void*)buffer, (void*)data, n) != 0) {
+		  retval = -EFAULT;
+		  goto done;
+		}
+
 		/* END of SQ add*/
 		//retval = -EIO; // Replace these lines
 		//goto done;
@@ -886,9 +931,6 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		buffer += n;
 		amount += n;
 		*f_pos += n;
-		
-		if (amount = count)
-		  goto done;
 	}
 
     done:
